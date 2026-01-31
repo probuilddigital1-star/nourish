@@ -38,4 +38,29 @@ if (fs.existsSync(assetsDir)) {
   console.log('Copied assets to .open-next root');
 }
 
+// Create _routes.json to configure static vs worker routes
+const routesConfig = {
+  version: 1,
+  include: ["/*"],
+  exclude: [
+    "/_next/static/*",
+    "/manifest.json",
+    "/favicon.ico",
+    "/BUILD_ID",
+    "/*.png",
+    "/*.ico",
+    "/*.svg",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.gif",
+    "/*.webp"
+  ]
+};
+
+fs.writeFileSync(
+  path.join(openNextDir, '_routes.json'),
+  JSON.stringify(routesConfig, null, 2)
+);
+console.log('Created _routes.json');
+
 console.log('Cloudflare Pages preparation complete!');
