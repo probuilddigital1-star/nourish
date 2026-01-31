@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 const SYSTEM_PROMPT = `You are a helpful nutrition assistant for a calorie tracking app called Nourish. Your job is to help users log their food by estimating nutritional information.
 
 When a user describes food they ate, respond with a JSON object containing your best estimate of the nutritional information. Be conversational but always include the food data.
@@ -46,6 +42,11 @@ export async function POST(request: NextRequest) {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
     }
+
+    // Initialize OpenAI client at runtime (not build time)
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
 
     // Build messages array with conversation history
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
