@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "cf:build": "opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion && node -e \"require('fs').renameSync('.open-next/worker.js', '.open-next/_worker.js')\""
+    "cf:build": "opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion && node scripts/prepare-cloudflare.js"
   },
   "dependencies": {
     "clsx": "^2.1.0",
