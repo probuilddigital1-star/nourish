@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 
 const SYSTEM_PROMPT = `You are a helpful nutrition assistant for a calorie tracking app called Nourish. Your job is to help users log their food by estimating nutritional information.
 
@@ -31,6 +30,11 @@ Guidelines:
 - Keep food names short and descriptive
 - Be encouraging and supportive`
 
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, conversationHistory } = await request.json()
@@ -39,17 +43,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      console.error('OPENAI_API_KEY not found in environment')
       return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
     }
 
-    // Initialize OpenAI client at runtime (not build time)
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    })
-
     // Build messages array with conversation history
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const messages: ChatMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
     ]
 
@@ -67,15 +68,38 @@ export async function POST(request: NextRequest) {
     // Add the current message
     messages.push({ role: 'user', content: message })
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      temperature: 0.7,
-      max_tokens: 500,
-      response_format: { type: 'json_object' },
+    // Use fetch directly for Cloudflare Workers compatibility
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        temperature: 0.7,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+      }),
     })
 
-    const responseContent = completion.choices[0]?.message?.content
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('OpenAI API error:', response.status, errorData)
+
+      if (response.status === 401) {
+        return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+      }
+
+      return NextResponse.json(
+        { error: 'OpenAI API error', details: errorData },
+        { status: response.status }
+      )
+    }
+
+    const data = await response.json()
+    const responseContent = data.choices?.[0]?.message?.content
 
     if (!responseContent) {
       return NextResponse.json({ error: 'No response from AI' }, { status: 500 })
@@ -87,10 +111,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(parsed)
   } catch (error: any) {
     console.error('AI API error:', error)
-
-    if (error?.code === 'invalid_api_key') {
-      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
-    }
 
     return NextResponse.json(
       { error: 'Failed to process request', details: error?.message },
