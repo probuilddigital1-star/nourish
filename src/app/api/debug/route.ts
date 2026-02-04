@@ -14,7 +14,7 @@ export async function GET() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${(process.env.OPENAI_API_KEY || '').trim()}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',

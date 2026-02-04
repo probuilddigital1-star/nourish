@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    const apiKey = process.env.OPENAI_API_KEY
+    const apiKey = (process.env.OPENAI_API_KEY || '').trim()
     if (!apiKey) {
       console.error('OPENAI_API_KEY not found in environment')
       return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
