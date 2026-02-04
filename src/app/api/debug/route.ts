@@ -1,21 +1,30 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const rawKey = process.env.OPENAI_API_KEY || ''
+  // Strip ALL non-printable and non-ASCII characters
+  const cleanKey = rawKey.replace(/[^\x20-\x7E]/g, '')
+
   const results: Record<string, any> = {
-    hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-    openAIKeyPrefix: process.env.OPENAI_API_KEY?.substring(0, 10) + '...',
+    hasOpenAIKey: !!rawKey,
+    keyLength: rawKey.length,
+    cleanKeyLength: cleanKey.length,
+    keyHasInvalidChars: rawKey.length !== cleanKey.length,
+    openAIKeyPrefix: cleanKey.substring(0, 10) + '...',
+    openAIKeySuffix: '...' + cleanKey.substring(cleanKey.length - 4),
     hasUSDAKey: !!process.env.NEXT_PUBLIC_USDA_API_KEY,
     nodeEnv: process.env.NODE_ENV,
   }
 
-  // Test OpenAI API call
+  // Test OpenAI API call with cleaned key
   try {
+    const headers = new Headers()
+    headers.set('Content-Type', 'application/json')
+    headers.set('Authorization', 'Bearer ' + cleanKey)
+
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(process.env.OPENAI_API_KEY || '').trim()}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: 'Say hello in 3 words' }],

@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    const apiKey = (process.env.OPENAI_API_KEY || '').trim()
+    // Strip non-printable/non-ASCII chars (Cloudflare Workers strict header validation)
+    const apiKey = (process.env.OPENAI_API_KEY || '').replace(/[^\x20-\x7E]/g, '')
     if (!apiKey) {
       console.error('OPENAI_API_KEY not found in environment')
       return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
@@ -69,12 +70,13 @@ export async function POST(request: NextRequest) {
     messages.push({ role: 'user', content: message })
 
     // Use fetch directly for Cloudflare Workers compatibility
+    const headers = new Headers()
+    headers.set('Content-Type', 'application/json')
+    headers.set('Authorization', 'Bearer ' + apiKey)
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages,
