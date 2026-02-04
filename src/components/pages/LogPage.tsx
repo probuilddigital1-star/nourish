@@ -10,6 +10,7 @@ import { RecentList } from '@/components/log/RecentList'
 import { AIAssistant } from '@/components/log/AIAssistant'
 import { QuickAddModal } from '@/components/log/QuickAddModal'
 import { BarcodeScanner } from '@/components/log/BarcodeScanner'
+import { FoodDetailModal } from '@/components/log/FoodDetailModal'
 import { useToast } from '@/components/ui/Toast'
 import { useStore, Favorite, MealType } from '@/store'
 import { cn } from '@/lib/utils'
@@ -32,6 +33,7 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
   const [showAI, setShowAI] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  const [pendingFood, setPendingFood] = useState<SearchFood | null>(null)
 
   const { addFood } = useStore()
   const { addToast } = useToast()
@@ -40,7 +42,11 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
     console.log('Searching:', query)
   }, [])
 
-  const handleSelectFood = useCallback((food: { name: string; calories: number; protein: number; carbs: number; fat: number; servingSize: number; servingUnit: string }) => {
+  const handleSelectFood = useCallback((food: { name: string; calories: number; protein: number; carbs: number; fat: number; servingSize: number; servingUnit: string; brand?: string }) => {
+    setPendingFood(food as SearchFood)
+  }, [])
+
+  const handleConfirmFood = useCallback((food: { name: string; calories: number; protein: number; carbs: number; fat: number; servingSize: number; servingUnit: string }) => {
     addFood({
       name: food.name,
       calories: food.calories,
@@ -52,6 +58,7 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
       mealType: selectedMeal,
     })
     addToast(`Added ${food.name} to ${selectedMeal}`, 'success')
+    setPendingFood(null)
   }, [addFood, addToast, selectedMeal])
 
   const handleAddFavorite = useCallback((food: Favorite, mealType: MealType) => {
@@ -99,18 +106,9 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
   }, [addFood, addToast, selectedMeal])
 
   const handleBarcodeFood = useCallback((food: SearchFood) => {
-    addFood({
-      name: food.name,
-      calories: food.calories,
-      protein: food.protein,
-      carbs: food.carbs,
-      fat: food.fat,
-      servingSize: food.servingSize,
-      servingUnit: food.servingUnit,
-      mealType: selectedMeal,
-    })
-    addToast(`Added ${food.name} to ${selectedMeal}`, 'success')
-  }, [addFood, addToast, selectedMeal])
+    setPendingFood(food)
+    setShowScanner(false)
+  }, [])
 
   return (
     <div className="pb-24 lg:pb-8">
@@ -221,6 +219,13 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}
         onFoodFound={handleBarcodeFood}
+      />
+
+      <FoodDetailModal
+        isOpen={!!pendingFood}
+        food={pendingFood}
+        onClose={() => setPendingFood(null)}
+        onAdd={handleConfirmFood}
       />
     </div>
   )
