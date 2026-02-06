@@ -7,6 +7,7 @@ import { WeightChart } from '@/components/progress/WeightChart'
 import { CalorieChart } from '@/components/progress/CalorieChart'
 import { MacroDonut } from '@/components/progress/MacroDonut'
 import { StreakCounter } from '@/components/progress/StreakCounter'
+import { AchievementGrid } from '@/components/gamification/AchievementGrid'
 import { useStore } from '@/store'
 import { cn } from '@/lib/utils'
 
@@ -83,6 +84,16 @@ export function ProgressPage() {
             className="mb-6"
           >
             <StreakCounter />
+          </motion.div>
+
+          {/* Achievements */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-6"
+          >
+            <AchievementGrid />
           </motion.div>
 
           {/* Desktop: Two-column layout for charts */}

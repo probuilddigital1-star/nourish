@@ -146,7 +146,10 @@ export function FoodSearch({ onSearch, onSelectFood, placeholder = "Search foods
                 >
                   <div className="text-left">
                     <p className="text-sm font-medium text-charcoal">{food.name}</p>
-                    <p className="text-xs text-gray-400">{food.brand} • {food.servingSize} {food.servingUnit}</p>
+                    <p className="text-xs text-gray-400">
+                      {food.brand} • {food.servingSize} {food.servingUnit}
+                      {food.source === 'off' && <span className="ml-1 text-sky-400">OFF</span>}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-sage-600">

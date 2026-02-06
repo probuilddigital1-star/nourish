@@ -14,6 +14,7 @@ import { FoodDetailModal } from '@/components/log/FoodDetailModal'
 import { useToast } from '@/components/ui/Toast'
 import { useStore, Favorite, MealType } from '@/store'
 import { cn } from '@/lib/utils'
+import { haptic } from '@/lib/haptics'
 import { SearchFood } from '@/services/foodApi'
 
 interface LogPageProps {
@@ -35,7 +36,7 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
   const [showScanner, setShowScanner] = useState(false)
   const [pendingFood, setPendingFood] = useState<SearchFood | null>(null)
 
-  const { addFood } = useStore()
+  const { addFood, goals, getTodayCalories } = useStore()
   const { addToast } = useToast()
 
   const handleSearch = useCallback((query: string) => {
@@ -47,6 +48,7 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
   }, [])
 
   const handleConfirmFood = useCallback((food: { name: string; calories: number; protein: number; carbs: number; fat: number; servingSize: number; servingUnit: string }) => {
+    haptic('success')
     addFood({
       name: food.name,
       calories: food.calories,
@@ -57,11 +59,17 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
       servingUnit: food.servingUnit,
       mealType: selectedMeal,
     })
-    addToast(`Added ${food.name} to ${selectedMeal}`, 'success')
+    const remaining = goals.calories - getTodayCalories()
+    addToast(`Added ${food.name}`, 'success', 3000, {
+      foodName: food.name,
+      calories: food.calories,
+      caloriesRemaining: remaining > 0 ? remaining : 0,
+    })
     setPendingFood(null)
-  }, [addFood, addToast, selectedMeal])
+  }, [addFood, addToast, selectedMeal, goals, getTodayCalories])
 
   const handleAddFavorite = useCallback((food: Favorite, mealType: MealType) => {
+    haptic('tap')
     addFood({
       name: food.name,
       calories: food.calories,
@@ -77,6 +85,7 @@ export function LogPage({ initialMealType = 'snack' }: LogPageProps) {
   }, [addFood, addToast])
 
   const handleQuickAdd = useCallback((calories: number, mealType: MealType, notes?: string) => {
+    haptic('tap')
     addFood({
       name: notes || 'Quick add',
       calories,

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { getLevelForXP, XP_REWARDS, ACHIEVEMENTS } from '@/lib/achievements'
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 
@@ -119,6 +120,26 @@ interface AppState {
   // Hydration - sync todayLog with foodHistory on startup
   hydrateTodayLog: () => void
 
+  // Gamification
+  xp: number
+  achievements: string[]
+  aiUseCount: number
+  barcodeUsed: boolean
+  addXP: (amount: number) => void
+  unlockAchievement: (id: string) => void
+  checkAchievements: () => string | null // returns newly unlocked achievement id
+  incrementAIUse: () => void
+  markBarcodeUsed: () => void
+  getLevel: () => ReturnType<typeof getLevelForXP>
+  getUniquefoods: () => number
+  getTotalFoodsLogged: () => number
+
+  // Water tracking
+  waterIntake: number
+  waterDate: string
+  addWater: () => void
+  removeWater: () => void
+
   // Computed
   getTodayCalories: () => number
   getTodayMacros: () => { protein: number; carbs: number; fat: number }
@@ -185,6 +206,15 @@ export const useStore = create<AppState>()(
 
           return { todayLog: newTodayLog, foodHistory: newHistory }
         })
+
+        // Award XP for logging food
+        get().addXP(XP_REWARDS.FOOD_LOGGED)
+
+        // Check if this is the first log of the day
+        const todayEntries = get().todayLog
+        if (todayEntries.length === 1) {
+          get().addXP(XP_REWARDS.FIRST_LOG_OF_DAY)
+        }
 
         // Also add to recent
         get().addToRecent({
@@ -503,6 +533,153 @@ export const useStore = create<AppState>()(
         }
       },
 
+      // Gamification
+      xp: 0,
+      achievements: [],
+      aiUseCount: 0,
+      barcodeUsed: false,
+
+      addXP: (amount) => {
+        set((state) => ({ xp: state.xp + amount }))
+        // Check achievements after XP change
+        get().checkAchievements()
+      },
+
+      unlockAchievement: (id) => {
+        set((state) => {
+          if (state.achievements.includes(id)) return state
+          return { achievements: [...state.achievements, id] }
+        })
+      },
+
+      checkAchievements: () => {
+        const state = get()
+        let newlyUnlocked: string | null = null
+
+        for (const achievement of ACHIEVEMENTS) {
+          if (state.achievements.includes(achievement.id)) continue
+
+          let earned = false
+
+          switch (achievement.id) {
+            case 'first_log':
+              earned = state.todayLog.length > 0 || state.foodHistory.length > 0
+              break
+            case 'streak_3':
+              earned = state.getCurrentStreak() >= 3
+              break
+            case 'streak_7':
+              earned = state.getCurrentStreak() >= 7
+              break
+            case 'streak_14':
+              earned = state.getCurrentStreak() >= 14
+              break
+            case 'streak_30':
+              earned = state.getCurrentStreak() >= 30
+              break
+            case 'goal_hit': {
+              const cals = state.getTodayCalories()
+              earned = cals >= state.goals.calories * 0.95 && cals <= state.goals.calories * 1.05
+              break
+            }
+            case 'all_meals': {
+              const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+              earned = mealTypes.every(m => state.getMealEntries(m).length > 0)
+              break
+            }
+            case 'macro_master': {
+              const macros = state.getTodayMacros()
+              earned = macros.protein >= state.goals.protein * 0.9 &&
+                       macros.carbs >= state.goals.carbs * 0.9 &&
+                       macros.fat >= state.goals.fat * 0.9
+              break
+            }
+            case 'hydrated':
+              earned = state.waterDate === getToday() && state.waterIntake >= 8
+              break
+            case 'ai_explorer':
+              earned = state.aiUseCount >= 5
+              break
+            case 'scanner':
+              earned = state.barcodeUsed
+              break
+            case 'variety_10':
+              earned = state.getUniquefoods() >= 10
+              break
+            case 'variety_25':
+              earned = state.getUniquefoods() >= 25
+              break
+            case 'foods_50':
+              earned = state.getTotalFoodsLogged() >= 50
+              break
+            case 'foods_100':
+              earned = state.getTotalFoodsLogged() >= 100
+              break
+            case 'level_bloom':
+              earned = state.xp >= 1000
+              break
+          }
+
+          if (earned) {
+            state.unlockAchievement(achievement.id)
+            if (!newlyUnlocked) newlyUnlocked = achievement.id
+          }
+        }
+
+        return newlyUnlocked
+      },
+
+      incrementAIUse: () => {
+        set((state) => ({ aiUseCount: state.aiUseCount + 1 }))
+      },
+
+      markBarcodeUsed: () => {
+        set({ barcodeUsed: true })
+      },
+
+      getLevel: () => {
+        return getLevelForXP(get().xp)
+      },
+
+      getUniquefoods: () => {
+        const { foodHistory, todayLog } = get()
+        const names = new Set<string>()
+        foodHistory.forEach(day => day.entries.forEach(e => names.add(e.name.toLowerCase())))
+        todayLog.forEach(e => names.add(e.name.toLowerCase()))
+        return names.size
+      },
+
+      getTotalFoodsLogged: () => {
+        const { foodHistory, todayLog } = get()
+        const historyTotal = foodHistory.reduce((sum, day) => sum + day.entries.length, 0)
+        return historyTotal + todayLog.length
+      },
+
+      // Water tracking
+      waterIntake: 0,
+      waterDate: '',
+
+      addWater: () => {
+        const today = getToday()
+        set((state) => {
+          const intake = state.waterDate === today ? state.waterIntake + 1 : 1
+          return { waterIntake: Math.min(intake, 8), waterDate: today }
+        })
+        // Check hydration achievement
+        const state = get()
+        if (state.waterIntake >= 8) {
+          get().addXP(XP_REWARDS.WATER_COMPLETE)
+        }
+      },
+
+      removeWater: () => {
+        const today = getToday()
+        set((state) => {
+          if (state.waterDate !== today) return { waterIntake: 0, waterDate: today }
+          return { waterIntake: Math.max(state.waterIntake - 1, 0) }
+        })
+      },
+
       // Computed
       getTodayCalories: () => {
         const { todayLog } = get()
@@ -535,6 +712,12 @@ export const useStore = create<AppState>()(
         foodHistory: state.foodHistory,
         weightHistory: state.weightHistory,
         todayLog: state.todayLog,
+        xp: state.xp,
+        achievements: state.achievements,
+        aiUseCount: state.aiUseCount,
+        barcodeUsed: state.barcodeUsed,
+        waterIntake: state.waterIntake,
+        waterDate: state.waterDate,
       }),
     }
   )

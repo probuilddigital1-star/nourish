@@ -30,6 +30,16 @@ const config: Config = {
           600: '#b84d2a',
           700: '#9a3f23',
         },
+        gold: {
+          400: '#d4a03a',
+          500: '#c4902a',
+        },
+        sky: {
+          50: '#f0f7ff',
+          100: '#dbeafe',
+          400: '#60a5fa',
+          500: '#3b82f6',
+        },
       },
       fontFamily: {
         display: ['Fraunces', 'Georgia', 'serif'],
@@ -54,6 +64,8 @@ const config: Config = {
         'fade-in': 'fadeIn 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
         'shimmer': 'shimmer 2s linear infinite',
+        'glow-pulse': 'glowPulse 1.5s ease-in-out',
+        'wobble': 'wobble 2s ease-in-out infinite',
       },
       keyframes: {
         breathe: {
@@ -84,6 +96,16 @@ const config: Config = {
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        glowPulse: {
+          '0%': { boxShadow: '0 0 0 0 rgba(122, 139, 98, 0.4)' },
+          '50%': { boxShadow: '0 0 20px 8px rgba(122, 139, 98, 0.2)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(122, 139, 98, 0)' },
+        },
+        wobble: {
+          '0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+          '25%': { transform: 'translateY(-2px) rotate(2deg)' },
+          '75%': { transform: 'translateY(1px) rotate(-1deg)' },
         },
       },
     },

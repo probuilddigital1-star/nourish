@@ -1,17 +1,89 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useCallback } from 'react'
+import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion'
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { MealIcon, FoodIconBadge } from '@/components/icons/FoodIcons'
 import { cn, formatNumber } from '@/lib/utils'
+import { haptic } from '@/lib/haptics'
 import { FoodEntry, MealType, useStore } from '@/store'
 
 interface MealCardProps {
   mealType: MealType
   entries: FoodEntry[]
   onAddFood: () => void
+}
+
+function SwipeableEntry({ entry, onDelete }: { entry: FoodEntry; onDelete: () => void }) {
+  const x = useMotionValue(0)
+  const deleteOpacity = useTransform(x, [-100, -60, 0], [1, 0.5, 0])
+  const deleteScale = useTransform(x, [-100, -60, 0], [1, 0.8, 0.5])
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragEnd = useCallback((_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false)
+    if (info.offset.x < -100) {
+      haptic('tap')
+      onDelete()
+    }
+  }, [onDelete])
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Delete background */}
+      <motion.div
+        className="absolute inset-0 bg-terracotta-500 rounded-xl flex items-center justify-end pr-4"
+        style={{ opacity: deleteOpacity }}
+      >
+        <motion.div style={{ scale: deleteScale }}>
+          <Trash2 className="w-5 h-5 text-white" />
+        </motion.div>
+      </motion.div>
+
+      {/* Swipeable content */}
+      <motion.div
+        className="group flex items-center justify-between py-2 px-3 bg-sage-50/50 rounded-xl relative"
+        style={{ x }}
+        drag="x"
+        dragConstraints={{ left: -120, right: 0 }}
+        dragElastic={0.3}
+        dragDirectionLock
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <FoodIconBadge name={entry.name} variant="sage" className="flex-shrink-0 w-8 h-8" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-charcoal truncate">
+              {entry.name}
+            </p>
+            <p className="text-xs text-gray-400">
+              {entry.servingSize} {entry.servingUnit}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-sage-600">
+            {entry.calories} cal
+          </span>
+          {/* Desktop hover delete button */}
+          <button
+            onClick={(e) => {
+              if (isDragging) return
+              e.stopPropagation()
+              haptic('tap')
+              onDelete()
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-terracotta-100 rounded-lg transition-all hidden sm:block"
+          >
+            <Trash2 className="w-4 h-4 text-terracotta-500" />
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
 }
 
 export function MealCard({ mealType, entries, onAddFood }: MealCardProps) {
@@ -76,7 +148,7 @@ export function MealCard({ mealType, entries, onAddFood }: MealCardProps) {
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-2">
-              {/* Food entries */}
+              {/* Food entries with swipe */}
               <AnimatePresence mode="popLayout">
                 {entries.map((entry, index) => (
                   <motion.div
@@ -84,36 +156,13 @@ export function MealCard({ mealType, entries, onAddFood }: MealCardProps) {
                     layout
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20, scale: 0.9 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0, scale: 0.9 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="group flex items-center justify-between py-2 px-3 bg-sage-50/50 rounded-xl"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <FoodIconBadge name={entry.name} variant="sage" className="flex-shrink-0 w-8 h-8" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-charcoal truncate">
-                          {entry.name}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {entry.servingSize} {entry.servingUnit}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-sage-600">
-                        {entry.calories} cal
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeFood(entry.id)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-terracotta-100 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4 text-terracotta-500" />
-                      </button>
-                    </div>
+                    <SwipeableEntry
+                      entry={entry}
+                      onDelete={() => removeFood(entry.id)}
+                    />
                   </motion.div>
                 ))}
               </AnimatePresence>

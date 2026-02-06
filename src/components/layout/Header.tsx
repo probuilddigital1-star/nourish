@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Settings, Bell } from 'lucide-react'
 import { getGreeting, formatDate } from '@/lib/utils'
 import { useStore } from '@/store'
+import { LevelBadge } from '@/components/gamification/LevelBadge'
 
 export function Header() {
   const profile = useStore((s) => s.profile)
@@ -34,6 +35,7 @@ export function Header() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
+          <LevelBadge />
           <button className="p-2 hover:bg-sage-100 rounded-xl transition-colors">
             <Bell className="w-5 h-5 text-gray-500" />
           </button>

@@ -1,24 +1,45 @@
 'use client'
 
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout/Header'
 import { CalorieRing } from '@/components/dashboard/CalorieRing'
 import { MacroBarGroup } from '@/components/dashboard/MacroBar'
 import { MealCard } from '@/components/dashboard/MealCard'
 import { Card } from '@/components/ui/Card'
+import { CelebrationOverlay } from '@/components/gamification/CelebrationOverlay'
+import { XPBreakdown } from '@/components/gamification/XPBreakdown'
+import { WaterTracker } from '@/components/gamification/WaterTracker'
 import { useStore, MealType } from '@/store'
+import { XP_REWARDS } from '@/lib/achievements'
 
 interface HomePageProps {
   onAddFood: (mealType?: MealType) => void
 }
 
 export function HomePage({ onAddFood }: HomePageProps) {
-  const { goals, getTodayCalories, getTodayMacros, getMealEntries } = useStore()
+  const { goals, getTodayCalories, getTodayMacros, getMealEntries, addXP } = useStore()
+  const [showCelebration, setShowCelebration] = useState(false)
+  const celebratedRef = useRef(false)
 
   const todayCalories = getTodayCalories()
   const todayMacros = getTodayMacros()
 
   const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+
+  // Celebrate when daily goal is hit (once per session)
+  useEffect(() => {
+    const hitGoal = todayCalories >= goals.calories * 0.95 && todayCalories <= goals.calories * 1.1
+    if (hitGoal && !celebratedRef.current && todayCalories > 0) {
+      celebratedRef.current = true
+      setShowCelebration(true)
+      addXP(XP_REWARDS.CALORIE_GOAL)
+    }
+  }, [todayCalories, goals.calories, addXP])
+
+  const handleCelebrationComplete = useCallback(() => {
+    setShowCelebration(false)
+  }, [])
 
   return (
     <div className="min-h-screen pb-32 lg:pb-8">
@@ -47,6 +68,9 @@ export function HomePage({ onAddFood }: HomePageProps) {
               </Card>
             </motion.div>
 
+            {/* XP Breakdown */}
+            <XPBreakdown />
+
             {/* Macro Overview */}
             <Card variant="glass" className="p-4 lg:p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-4">Today's Macros</h3>
@@ -61,6 +85,9 @@ export function HomePage({ onAddFood }: HomePageProps) {
                 }}
               />
             </Card>
+
+            {/* Water Tracker */}
+            <WaterTracker />
 
             {/* Quick Stats - Desktop only */}
             <div className="hidden lg:grid grid-cols-3 gap-4">
@@ -109,6 +136,11 @@ export function HomePage({ onAddFood }: HomePageProps) {
           </div>
         </div>
       </main>
+
+      <CelebrationOverlay
+        isVisible={showCelebration}
+        onComplete={handleCelebrationComplete}
+      />
     </div>
   )
 }

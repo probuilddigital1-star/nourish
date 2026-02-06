@@ -280,7 +280,7 @@ export function BarcodeScanner({ isOpen, onClose, onFoodFound }: BarcodeScannerP
                     Barcode: {scannedCode}
                   </p>
                   <p className="text-xs text-gray-400 mb-4">
-                    This product isn't in the USDA database. Try searching by name instead.
+                    This product wasn't found in our databases. Try searching by name instead.
                   </p>
                   <div className="flex gap-3">
                     <Button variant="ghost" className="flex-1" onClick={handleClose}>
